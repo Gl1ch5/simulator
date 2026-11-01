@@ -150,7 +150,7 @@ export class Inspector {
     ));
     if (v.meshes?.length) {
       this.statsBox.append(h('h4', {}, 'Зубчатые передачи'));
-      for (const m of v.meshes) this.statsBox.append(h('div', { class: 'list-row' }, h('span', {}, `#${m.a} → #${m.b}`), h('span', { class: 'info' }, `i = ${fmt(m.ratio, 2)}`)));
+      for (const m of v.meshes) this.statsBox.append(h('div', { class: 'list-row' }, h('span', {}, `#${m.a} ↔ #${m.b}  (${m.za}:${m.zb})`), h('span', { class: 'info' }, `i = ${fmt(m.ratio, 2)}`)));
     }
     this.statsBox.append(h('h4', {}, 'Проверка'));
     if (!bp.parts.size) this.statsBox.append(h('div', { class: 'muted', style: { fontSize: '12px' } }, 'Пусто. Начни с балок (B) или прямоугольника (R).'));

@@ -15,7 +15,7 @@ export async function validate(bp) {
       mass: asm.totalMass,
       bodies: asm.groups.size,
       joints: asm.joints.length,
-      meshes: asm.meshes.map((m) => ({ a: m.a.part.id, b: m.b.part.id, ratio: m.b.radius / m.a.radius })),
+      meshes: asm.meshes.map((m) => { const [s, l] = [m.a, m.b].sort((x, y) => x.part.teeth - y.part.teeth); return { a: s.part.id, b: l.part.id, za: s.part.teeth, zb: l.part.teeth, ratio: l.part.teeth / s.part.teeth }; }),
       power: [...asm.powerUnits.values()].map((u) => u.spec),
     };
   } catch (e) {

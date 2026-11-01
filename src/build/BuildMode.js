@@ -141,8 +141,8 @@ export class BuildMode {
         const ok = info.ok && Math.abs(gears[i].part.module - gears[j].part.module) < 1e-4;
         this.infoLayer.add(polyline([gears[i].center, gears[j].center], ok ? 0x3dff8a : 0xff5a4a));
         const mid = gears[i].center.clone().add(gears[j].center).multiplyScalar(0.5);
-        const ratio = (gears[j].radius / gears[i].radius);
-        this.infoLayer.add(label(ok ? `сцеплены  i=${ratio.toFixed(2)}` : `нужно ${info.need.toFixed(3)} м, сейчас ${info.perp.toFixed(3)}`, mid, ok ? '#7dffb0' : '#ff8a7a'));
+        const [za, zb] = [gears[i].part.teeth, gears[j].part.teeth].sort((x, y) => x - y);
+        this.infoLayer.add(label(ok ? `сцеплены ${za}:${zb}  i=${(zb / za).toFixed(2)}` : `нужно ${info.need.toFixed(3)} м, сейчас ${info.perp.toFixed(3)}`, mid, ok ? '#7dffb0' : '#ff8a7a'));
       }
     }
   }
