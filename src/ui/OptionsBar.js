@@ -84,10 +84,11 @@ export class OptionsBar {
     wrap.append(h('label', {}, 'Сетка'));
     wrap.append(h('select', { onchange: (e) => { wp.setStep(parseFloat(e.target.value)); this.ui.app.gizmo.setTranslationSnap(wp.step); } },
       ...CONFIG.gridSizes.map((g) => h('option', { value: g, selected: Math.abs(wp.step - g) < 1e-9 }, g >= 1 ? `${g} м` : `${Math.round(g * 1000)} мм`))));
-    const chips = h('div', { class: 'chips' }, ...Object.entries(PLANES).map(([k, v], i) =>
-      h('button', { class: 'chip' + (wp.orientation === k ? ' active' : ''), title: `${v.label} — клавиша ${i + 1}`, onclick: () => { wp.setOrientation(k); this.render(); } }, k)));
-    wrap.append(h('label', { style: { marginLeft: '6px' } }, 'Плоскость'), chips);
-    this.planeInfo = h('span', { class: 'kbd', title: 'Q / E — сдвинуть плоскость' });
+    const modes = [['auto', 'АВТО', 'Срез выбирается по взгляду камеры — клавиша 0'], ...Object.entries(PLANES).map(([k, v], i) => [k, k, `${v.label} — клавиша ${i + 1}`])];
+    const chips = h('div', { class: 'chips' }, ...modes.map(([k, lbl, title]) =>
+      h('button', { class: 'chip', 'data-mode': k, title, onclick: () => { wp.setMode(k); this.renderPlaneInfo(); } }, lbl)));
+    wrap.append(h('label', { style: { marginLeft: '6px' } }, 'Срез'), chips);
+    this.planeInfo = h('span', { class: 'kbd', title: 'Q / E или Shift+колесо — сдвинуть срез сквозь решётку' });
     wrap.append(this.planeInfo);
     this.renderPlaneInfo();
     return wrap;
@@ -95,10 +96,8 @@ export class OptionsBar {
   renderPlaneInfo() {
     if (!this.planeInfo) return;
     const wp = this.build.workPlane;
-    const axis = { XZ: 'Y', XY: 'Z', YZ: 'X' }[wp.orientation];
-    this.planeInfo.textContent = `${axis}=${wp.offset.toFixed(2)} (Q/E)`;
-    for (const c of this.el.querySelectorAll('.chips .chip')) {
-      if (PLANES[c.textContent]) c.classList.toggle('active', c.textContent === wp.orientation);
-    }
+    const axis = PLANES[wp.orientation].axis;
+    this.planeInfo.textContent = `${wp.orientation} · ${axis}=${wp.offset.toFixed(2)}`;
+    for (const c of this.el.querySelectorAll('.chips .chip[data-mode]')) c.classList.toggle('active', c.dataset.mode === wp.mode);
   }
 }

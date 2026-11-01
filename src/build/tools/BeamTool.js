@@ -9,12 +9,12 @@ export class BeamTool extends Tool {
   reset() { super.reset(); this.start = null; this.lastBeam = null; }
   hint() {
     return this.start
-      ? 'Кликни вторую точку · <b>Shift</b> — вдоль нормали плоскости (вертикально) · <b>ПКМ/Esc</b> — закончить цепочку'
+      ? 'Кликни вторую точку. Веди мышь вдоль оси — балка прилипнет к <b style="color:#ff6b6b">X</b>/<b style="color:#6bff8a">Y</b>/<b style="color:#6b9bff">Z</b> · <b>ПКМ/Esc</b> — закончить цепочку'
       : 'Кликни начальную точку балки. Жёлтая точка — привязка к вершине детали (автосоединение)';
   }
   snapOptions(e) {
     if (this.start && e?.shiftKey) return { constrainLine: { origin: this.start.point, dir: this.build.workPlane.normal } };
-    return {};
+    return this.start ? { inferFrom: this.start.point } : {};
   }
   makePart(a, b) {
     const s = this.settings;
@@ -32,7 +32,6 @@ export class BeamTool extends Tool {
     if (!snap) return;
     if (!this.start) {
       this.start = snap;
-      if (snap.kind !== 'plane') this.build.workPlane.setOffsetFromPoint(snap.point);
       return;
     }
     if (snap.point.distanceTo(this.start.point) < 1e-4) return;

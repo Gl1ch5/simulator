@@ -1,6 +1,7 @@
 // Editor: owns part visuals, pointer handling, tools, selection and overlays.
 import * as THREE from 'three';
 import { WorkPlane } from './WorkPlane.js';
+import { Lattice } from './Lattice.js';
 import { Snapper } from './Snapper.js';
 import { buildPartObject, worldSnapPoints } from '../parts/PartFactory.js';
 import { bus } from '../core/EventBus.js';
@@ -44,11 +45,18 @@ export class BuildMode {
 
     this.workPlane = new WorkPlane(this.scene);
     this.workPlane.setStep(CONFIG.defaultGrid);
+    this.lattice = new Lattice(this.scene);
+    this.lattice.update(new THREE.Vector3(), this.workPlane.step);
+    // axis inference guide (SketchUp-style coloured line)
+    this.guide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(1, 0, 0)]),
+      new THREE.LineDashedMaterial({ color: 0xff6b6b, dashSize: 0.06, gapSize: 0.04, depthTest: false, transparent: true }));
+    this.guide.renderOrder = 32;
+    this.guide.visible = false;
     this.snapper = new Snapper(this);
     this.cursor = dot(new THREE.Vector3(), 0x39d0ff, 0.022);
     this.cursorRing = new THREE.Mesh(new THREE.RingGeometry(0.035, 0.045, 24), new THREE.MeshBasicMaterial({ color: 0x39d0ff, depthTest: false, transparent: true, side: THREE.DoubleSide }));
     this.cursorRing.renderOrder = 31;
-    this.overlay.add(this.cursor, this.cursorRing);
+    this.overlay.add(this.cursor, this.cursorRing, this.guide);
 
     this.objects = new Map();
     this.selected = null;
@@ -153,6 +161,7 @@ export class BuildMode {
     this.overlay.visible = v;
     this.infoLayer.visible = v;
     this.workPlane.setVisible(v);
+    this.lattice.setVisible(v);
     if (!v) { this.app.gizmo?.detach(); this.setHover(null); this.app.rs.selectOutline.selectedObjects = []; }
     else { this.rebuildAll(); if (this.selected && this.toolId === 'select') this.attachGizmo(); }
   }
@@ -201,6 +210,8 @@ export class BuildMode {
         const ndc = toNdc(e);
         const snap = this.resolve(ndc, e);
         this.tool.onDown(snap, e, ndc);
+        // the active slice follows the last placed point -> true 3D construction
+        if (snap && ['beam', 'rect', 'polygon', 'circle'].includes(this.toolId)) this.workPlane.setFocus(snap.point);
         this.updateHint();
       }
     });
@@ -218,6 +229,13 @@ export class BuildMode {
       downPos = null;
     });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Shift + wheel moves the active slice through the lattice (captured before OrbitControls zoom)
+    window.addEventListener('wheel', (e) => {
+      if (!this.active || !e.shiftKey || e.target !== c) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      this.workPlane.nudge(e.deltaY < 0 ? 1 : -1);
+      if (this.lastNdc) this.pointerMove(this.lastNdc, this.lastEvent);
+    }, { capture: true, passive: false });
   }
 
   resolve(ndc, e) {
@@ -234,13 +252,25 @@ export class BuildMode {
       this.cursor.position.copy(snap.point);
       this.cursorRing.position.copy(snap.point);
       this.cursorRing.lookAt(snap.point.clone().add(snap.normal));
-      const col = snap.kind === 'vertex' ? 0xffd23f : snap.kind === 'surface' ? 0x3dff8a : snap.kind === 'line' ? 0xff7ad9 : 0x39d0ff;
+      const AXC = { X: 0xff6b6b, Y: 0x6bff8a, Z: 0x6b9bff };
+      const col = snap.kind === 'vertex' ? 0xffd23f : snap.kind === 'surface' ? 0x3dff8a : snap.kind === 'line' ? 0xff7ad9 : snap.kind === 'axis' ? AXC[snap.axis] : 0x39d0ff;
+      if (snap.kind === 'axis') {
+        const dir = snap.point.clone().sub(snap.from);
+        const len = dir.length();
+        dir.normalize();
+        this.guide.geometry.setFromPoints([snap.from.clone().addScaledVector(dir, -len * 0.25 - 0.3), snap.point.clone().addScaledVector(dir, len * 0.25 + 0.3)]);
+        this.guide.computeLineDistances();
+        this.guide.material.color.setHex(col);
+        this.guide.visible = true;
+      } else this.guide.visible = false;
       this.cursor.material.color.setHex(col);
       this.cursorRing.material.color.setHex(col);
       this.workPlane.setCursor(snap.point);
+      this.lattice.update(snap.point, this.workPlane.step);
       bus.emit('cursor', snap);
     } else {
       this.cursor.visible = this.cursorRing.visible = false;
+      this.guide.visible = false;
     }
     this.tool.onMove(snap, e || {}, ndc);
   }
@@ -256,9 +286,10 @@ export class BuildMode {
     switch (e.code) {
       case 'KeyQ': this.workPlane.nudge(-1); break;
       case 'KeyE': this.workPlane.nudge(1); break;
-      case 'Digit1': this.workPlane.setOrientation('XZ'); break;
-      case 'Digit2': this.workPlane.setOrientation('XY'); break;
-      case 'Digit3': this.workPlane.setOrientation('YZ'); break;
+      case 'Digit0': case 'Backquote': this.workPlane.setMode('auto'); this.toast('Срез сетки: авто (по взгляду камеры)'); break;
+      case 'Digit1': this.workPlane.setMode('XZ'); break;
+      case 'Digit2': this.workPlane.setMode('XY'); break;
+      case 'Digit3': this.workPlane.setMode('YZ'); break;
       case 'Tab': {
         e.preventDefault();
         if (this.tool.cycleAxis) this.tool.cycleAxis();
@@ -309,6 +340,7 @@ export class BuildMode {
 
   update() {
     if (!this.active) return;
+    this.workPlane.autoOrient(this.camera);
     // keep cursor ring a constant screen size
     const d = this.camera.position.distanceTo(this.cursor.position);
     const s = Math.max(0.3, d * 0.12);

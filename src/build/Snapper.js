@@ -28,6 +28,39 @@ export class Snapper {
     return this.raycaster.ray;
   }
 
+  /**
+   * SketchUp-style inference: if the mouse is close (in screen space) to the X / Y / Z
+   * line through `origin`, snap onto that line at lattice steps.
+   */
+  inferAxis(ndc, origin, step) {
+    const cam = this.build.camera;
+    const ray = this.ray(ndc);
+    const w = window.innerWidth, h = window.innerHeight;
+    const toScreen = (p) => { const v = p.clone().project(cam); return new THREE.Vector2((v.x + 1) / 2 * w, (1 - v.y) / 2 * h); };
+    const mouse = new THREE.Vector2((ndc.x + 1) / 2 * w, (1 - ndc.y) / 2 * h);
+    const o2 = toScreen(origin);
+    let best = null, bestD = 11;
+    for (const [name, dir] of [['X', new THREE.Vector3(1, 0, 0)], ['Y', new THREE.Vector3(0, 1, 0)], ['Z', new THREE.Vector3(0, 0, 1)]]) {
+      // skip axes seen almost end-on: they would capture everything near the origin
+      const s2 = toScreen(origin.clone().addScaledVector(dir, step * 5));
+      if (s2.distanceTo(o2) < 28) continue;
+      const w0 = ray.origin.clone().sub(origin);
+      const b = ray.direction.dot(dir), dd = ray.direction.dot(w0), e = dir.dot(w0);
+      const den = 1 - b * b;
+      if (den < 1e-6) continue;
+      const t = (e - b * dd) / den;
+      const raw = origin.clone().addScaledVector(dir, t);
+      const dist = toScreen(raw).distanceTo(mouse);
+      if (Math.abs(t) < step * 0.5) continue; // near the origin itself: let other snaps decide
+      if (dist < bestD) {
+        bestD = dist;
+        const p = origin.clone().addScaledVector(dir, snapScalar(t, step));
+        best = { point: p, partId: null, normal: this.build.workPlane.normal.clone(), kind: 'axis', axis: name, from: origin.clone() };
+      }
+    }
+    return best;
+  }
+
   /** Raycast parts; returns { point, normal, partId, object } or null. */
   pickPart(ndc, filter = null) {
     this.raycaster.setFromCamera(ndc, this.build.camera);
@@ -83,6 +116,11 @@ export class Snapper {
         const hit = this.pickPart(ndc);
         return { point: best.p.clone(), partId: best.partId, normal: hit?.normal || wp.normal.clone(), kind: 'vertex' };
       }
+    }
+
+    if (opts.inferFrom) {
+      const inf = this.inferAxis(ndc, opts.inferFrom, step);
+      if (inf) return inf;
     }
 
     if (opts.surfaces !== false) {
