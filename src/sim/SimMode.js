@@ -154,6 +154,10 @@ export class SimMode {
         g.obj.quaternion.copy(g.baseQuat).multiply(qy.setFromAxisAngle(Y, outAngle));
       }
     }
+    for (const c of this.asm.carriers.values()) {
+      if (c.rotorObj) c.rotorObj.rotation.y = c.rotor.angle;
+      for (const g of c.gearObjs) g.obj.quaternion.copy(g.baseQuat).multiply(qy.setFromAxisAngle(Y, c.rotor.angle));
+    }
     // steering wheel visual
     for (const s of this.asm.seats) {
       const obj = this.asm.partObjects.get(s.id)?.getObjectByName('steeringWheel');

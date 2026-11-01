@@ -4,7 +4,7 @@ import { bus } from '../core/EventBus.js';
 import { CONFIG } from '../core/config.js';
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
-const REF_KEYS = ['base', 'moving', 'mount'];
+const REF_KEYS = ['base', 'moving', 'mount', 'left', 'right'];
 
 export class Blueprint {
   constructor() {

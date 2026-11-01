@@ -8,7 +8,7 @@ export const CONFIG = {
   physicsHz: 120,
   maxSubsteps: 6,
   gravity: -9.81,
-  drivetrainIterations: 12,
+  drivetrainIterations: 20,
   snapPixels: 14,
   autosaveKey: 'forge.autosave.v1',
   settingsKey: 'forge.settings.v1',

@@ -7,6 +7,7 @@ import { Gear } from '../parts/Gear.js';
 import { Bearing, Hinge } from '../parts/Joints.js';
 import { Motor } from '../parts/Power.js';
 import { Seat } from '../parts/Seat.js';
+import { Differential } from '../parts/Differential.js';
 import { A, QA, quatFromBasis, quatYTo } from '../core/math.js';
 
 export function buildBuggy(bp, { withEngine = false } = {}) {
@@ -48,43 +49,46 @@ export function buildBuggy(bp, { withEngine = false } = {}) {
   }));
   link(nose, fl, [0, Y, -Z]);
 
-  // ---- rear axle with wheels, bearings in stands ----
+  // ---- rear axle: two half-shafts in bearings + open differential ----
   const R = 0.3, W = 0.15, axleZ = 0.7;
   const standL = beam([-X, Y - 0.02, axleZ], [-X, R, axleZ], 'bar', 0.04, 'steel');
   const standR = beam([X, Y - 0.02, axleZ], [X, R, axleZ], 'bar', 0.04, 'steel');
   link(standL, lf, [-X, Y, axleZ]); link(standR, fr, [X, Y, axleZ]);
-  const axle = beam([-0.75, R, axleZ], [0.75, R, axleZ], 'rod', 0.035, 'steel');
+  const halfL = beam([-0.75, R, axleZ], [-0.06, R, axleZ], 'rod', 0.035, 'steel');
+  const halfR = beam([0.06, R, axleZ], [0.75, R, axleZ], 'rod', 0.035, 'steel');
   const wheel = (x, z, side) => add(Shape.create({
     pos: [x, R, z], quat: QA(quatFromBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(side, 0, 0))),
     circle: { r: R, segments: 40 }, depth: W, material: 'rubber',
   }));
   const wRL = wheel(-0.6, axleZ, -1), wRR = wheel(0.6, axleZ, 1);
-  link(wRL, axle, [-0.6, R, axleZ]); link(wRR, axle, [0.6, R, axleZ]);
+  link(wRL, halfL, [-0.6, R, axleZ]); link(wRR, halfR, [0.6, R, axleZ]);
   const qX = QA(quatYTo(new THREE.Vector3(1, 0, 0)));
-  const brL = add(Bearing.create({ pos: [-X, R, axleZ], quat: qX, base: standL.id, moving: axle.id }));
-  const brR = add(Bearing.create({ pos: [X, R, axleZ], quat: qX, base: standR.id, moving: axle.id }));
+  const brL = add(Bearing.create({ pos: [-X, R, axleZ], quat: qX, base: standL.id, moving: halfL.id }));
+  const brR = add(Bearing.create({ pos: [X, R, axleZ], quat: qX, base: standR.id, moving: halfR.id }));
   for (const b of [brL, brR]) b.brake = 250;
 
   // ---- gears + motor ----
   const module = 0.006;
-  const axleGear = add(Gear.create({ pos: [0, R, axleZ], quat: qX, teeth: 48, module, width: 0.03, mount: axle.id }));
+  // diff housing hangs from the motor cross-member; the ring gear sits on its carrier
+  const diff = add(Differential.create({ pos: [0, R, axleZ], quat: qX, base: motorCross.id, left: halfL.id, right: halfR.id }));
+  const axleGear = add(Gear.create({ pos: [0.06, R, axleZ], quat: qX, teeth: 48, module, width: 0.03, mount: diff.id }));
   const pinionR = Gear.radius({ teeth: 12, module });
   const dist = Gear.radius(axleGear) + pinionR;
   let power;
   if (!withEngine) {
     const len = 0.18;
     const shaftTip = len / 2 + 0.06 * 0.7;
-    power = add(Motor.create({ pos: [-shaftTip, R, axleZ - dist], quat: qX, base: motorCross.id, variant: 'medium' }));
+    power = add(Motor.create({ pos: [0.06 - shaftTip, R, axleZ - dist], quat: qX, base: motorCross.id, variant: 'medium' }));
   } else {
     // imported lazily to keep the electric example lightweight
     power = add({ type: 'engine', pos: [-(0.42 / 2 + 0.042), R + 0.02, axleZ - dist], quat: qX, base: motorCross.id, variant: 'moto', invert: false, auto: true });
   }
-  const pinion = add(Gear.create({ pos: [0, R, axleZ - dist], quat: qX, teeth: 12, module, width: 0.03, mount: power.id }));
+  const pinion = add(Gear.create({ pos: [0.06, R, axleZ - dist], quat: qX, teeth: 12, module, width: 0.03, mount: power.id }));
   if (withEngine) {
     // align the pinion with the engine shaft tip
     const h = 0.28 / 2 + 0.06 * 0.7;
-    power.pos = [-h, R, axleZ - dist];
-    pinion.pos = [0, R, axleZ - dist];
+    power.pos = [0.06 - h, R, axleZ - dist];
+    pinion.pos = [0.06, R, axleZ - dist];
   }
 
   // ---- front steering: hinge (kingpin) + knuckle + stub axle + bearing + wheel ----
@@ -97,7 +101,7 @@ export function buildBuggy(bp, { withEngine = false } = {}) {
     const stub = beam([kx, R, frontZ], [side * 0.62, R, frontZ], 'rod', 0.035, 'steel');
     link(king, stub, [kx, R, frontZ]);
     const hinge = add(Hinge.create({ pos: [kx, (Y + R) / 2, frontZ], quat: [0, 0, 0, 1], base: side < 0 ? lf.id : fr.id, moving: king.id }));
-    hinge.maxAngle = 32; hinge.stiffness = 4000; hinge.damping = 200;
+    hinge.maxAngle = 32; hinge.stiffness = 15000; hinge.damping = 600;
     const w = wheel(side * 0.6, frontZ, side);
     const br = add(Bearing.create({ pos: [side * 0.6, R, frontZ], quat: qX, base: stub.id, moving: w.id }));
     br.brake = 200;

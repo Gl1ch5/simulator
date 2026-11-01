@@ -19,6 +19,7 @@ export class Drivetrain {
     this.meshes = [];          // gear meshes
     this.brakes = [];          // bearing brakes/friction
     this.power = [];           // power units (motors / engines) -> virtual rotor
+    this.diffs = [];           // open differentials
   }
 
   // ---------- registration ----------
@@ -47,6 +48,9 @@ export class Drivetrain {
   }
 
   addPower(unit) { this.power.push(unit); }
+
+  /** carrier: virtual rotor; left/right: physical rotors (half-shafts) */
+  addDiff(carrier, left, right) { this.diffs.push({ carrier, left, right }); }
 
   // ---------- per step ----------
   readBodies() {
@@ -83,6 +87,7 @@ export class Drivetrain {
     this.readBodies();
     for (const r of this.rotors) this.rotorAxis(r);
     for (const m of this.meshes) { for (const g of [m.a, m.b]) if (!g.rotor.virtual) this.rotorAxis(g.rotor); }
+    for (const d of this.diffs) { this.rotorAxis(d.left); this.rotorAxis(d.right); }
     for (const b of this.brakes) {
       b.axis.copy(b.axisLocal);
       if (b.moving) b.axis.applyQuaternion(b.moving.q);
@@ -98,6 +103,7 @@ export class Drivetrain {
     for (let it = 0; it < iters; it++) {
       for (const b of this.brakes) this.solveBrake(b, dt);
       for (const m of this.meshes) this.solveMesh(m, dt);
+      for (const d of this.diffs) this.solveDiff(d);
     }
     for (const m of this.meshes) m.torque = m.acc / dt;
 
@@ -157,6 +163,26 @@ export class Drivetrain {
     m.acc = clamp(old + lambda, -limit, limit);
     lambda = m.acc - old;
     this.applyTerms(terms, lambda);
+  }
+
+  solveDiff(d) {
+    const n = d.carrier.axis;
+    const terms = [{ rotor: d.carrier, c: 1 }];
+    if (d.carrier.housing) terms.push({ e: d.carrier.housing, j: n.clone().multiplyScalar(-1) });
+    for (const side of [d.left, d.right]) {
+      const s = Math.sign(side.axis.dot(n)) || 1;
+      terms.push({ e: side.entry, j: n.clone().multiplyScalar(-0.5 * s) });
+      if (side.ref) terms.push({ e: side.ref, j: n.clone().multiplyScalar(0.5 * s) });
+    }
+    // merge duplicate bodies (e.g. both shafts share the frame as reference)
+    const merged = [];
+    for (const t of terms) {
+      const same = t.e && merged.find((m) => m.e === t.e);
+      if (same) same.j.add(t.j); else merged.push(t.e ? { e: t.e, j: t.j.clone() } : t);
+    }
+    const { cdot, K } = this.solveTerms(merged);
+    if (K < 1e-12) return;
+    this.applyTerms(merged, -cdot / K);
   }
 
   solveBrake(b, dt) {

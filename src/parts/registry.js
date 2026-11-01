@@ -4,14 +4,15 @@ import { Gear } from './Gear.js';
 import { Bearing, Hinge, Spring } from './Joints.js';
 import { Motor, Engine } from './Power.js';
 import { Seat } from './Seat.js';
+import { Differential } from './Differential.js';
 
-export const PART_TYPES = { beam: Beam, shape: Shape, gear: Gear, bearing: Bearing, hinge: Hinge, spring: Spring, motor: Motor, engine: Engine, seat: Seat };
+export const PART_TYPES = { beam: Beam, shape: Shape, gear: Gear, bearing: Bearing, hinge: Hinge, spring: Spring, motor: Motor, engine: Engine, seat: Seat, diff: Differential };
 
 export function typeOf(part) { return PART_TYPES[part.type]; }
 
 export const TYPE_NAMES = {
   beam: 'Балка', shape: 'Пластина', gear: 'Шестерня', bearing: 'Подшипник', hinge: 'Шарнир',
-  spring: 'Амортизатор', motor: 'Электромотор', engine: 'ДВС', seat: 'Сиденье/пульт',
+  spring: 'Амортизатор', diff: 'Дифференциал', motor: 'Электромотор', engine: 'ДВС', seat: 'Сиденье/пульт',
 };
 
 export function partName(p) {

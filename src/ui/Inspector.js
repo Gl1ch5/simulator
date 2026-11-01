@@ -101,11 +101,12 @@ export class Inspector {
     this.partBox.append(h('h4', {}, 'Параметры'));
     for (const f of T.fields(p)) this.partBox.append(this.fieldEl(f));
 
-    if (p.base != null || p.moving != null || p.mount != null) {
+    if (p.base != null || p.moving != null || p.mount != null || p.left != null) {
       this.partBox.append(h('h4', {}, 'Крепление'));
       const nm = (id) => { const q = bp.get(id); return q ? `${partName(q)} #${id}` : '—'; };
       if (p.base != null) this.partBox.append(h('div', { class: 'list-row' }, h('span', { class: 'muted' }, 'Основание'), h('span', {}, nm(p.base))));
       if (p.moving != null) this.partBox.append(h('div', { class: 'list-row' }, h('span', { class: 'muted' }, 'Подвижная часть'), h('span', {}, nm(p.moving))));
+      if (p.left != null) this.partBox.append(h('div', { class: 'list-row' }, h('span', { class: 'muted' }, 'Полуоси'), h('span', {}, `${nm(p.left)} / ${nm(p.right)}`)));
       if (p.mount != null) this.partBox.append(h('div', { class: 'list-row' }, h('span', { class: 'muted' }, 'Установлена на'), h('span', {}, nm(p.mount))));
     }
     const conns = bp.connectionsOf(p.id);

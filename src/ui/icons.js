@@ -15,6 +15,7 @@ export const ICONS = {
   hinge: s('<rect x="10" y="3" width="4" height="18" rx="2"/><path d="M10 7H4v4h6M14 13h6v4h-6"/>'),
   spring: s('<path d="M12 2v3M12 19v3"/><path d="M7 5h10L7 8h10L7 11h10L7 14h10L7 17h10l-10 2"/>'),
   gear: s('<path d="M12 2l1.5 3 3.2-1 .3 3.3 3.2 1-1.5 3 1.5 3-3.2 1-.3 3.3-3.2-1L12 22l-1.5-3-3.2 1-.3-3.3-3.2-1 1.5-3-1.5-3 3.2-1 .3-3.3 3.2 1z"/><circle cx="12" cy="12" r="3"/>'),
+  diff: s('<circle cx="12" cy="12" r="5"/><path d="M2 12h5M17 12h5"/><path d="M12 7V3M9 4h6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>'),
   motor: s('<rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 12h5M6 7V5M13 7V5"/><path d="M8 10l2 2-2 2M11 14h2"/>'),
   engine: s('<path d="M4 9h3l2-2h5l2 2h2v3h2v-2h1v6h-1v-2h-2v3h-3l-2 2H8l-2-2H4z"/>'),
   seat: s('<path d="M7 3v10h10"/><path d="M5 13h13l-1 4H6z"/><path d="M8 17v4M15 17v4"/>'),

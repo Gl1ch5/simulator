@@ -57,10 +57,10 @@ b { color: var(--accent); font-weight: 600; }
 
 /* ---------- toolbar ---------- */
 .toolbar { position: absolute; top: 70px; left: 10px; width: 58px; padding: 6px; display: flex; flex-direction: column; gap: 2px; max-height: calc(100% - 120px); overflow-y: auto; scrollbar-width: none; }
-.toolbar .group-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); text-align: center; margin: 7px 0 3px; }
+.toolbar .group-title { font-size: 8.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); text-align: center; margin: 5px 0 2px; overflow: hidden; }
 .toolbar .group-title:first-child { margin-top: 2px; }
-.tool { position: relative; width: 46px; height: 42px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: #c8d6e5; display: grid; place-items: center; cursor: pointer; transition: all .12s; }
-.tool svg { width: 22px; height: 22px; }
+.tool { position: relative; width: 46px; height: 36px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: #c8d6e5; display: grid; place-items: center; cursor: pointer; transition: all .12s; }
+.tool svg { width: 20px; height: 20px; }
 .tool:hover { background: rgba(255,255,255,.06); color: #fff; }
 .tool.active { background: linear-gradient(135deg, rgba(57,208,255,.25), rgba(124,92,255,.25)); border-color: rgba(57,208,255,.6); color: #fff; box-shadow: 0 0 18px rgba(57,208,255,.25) inset; }
 .tool .hk { position: absolute; right: 3px; bottom: 2px; font-family: var(--mono); font-size: 8.5px; color: var(--muted); }

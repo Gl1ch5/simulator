@@ -209,6 +209,30 @@ export function assemble(bp, world, R, root, { selfCollision = false } = {}) {
     powerUnits.set(p.id, unit);
   }
 
+  // ---- differentials ----
+  const carriers = new Map(); // diff part id -> { rotor, rotorObj, gearObjs }
+  for (const p of parts) {
+    if (p.type !== 'diff') continue;
+    const g = groupOf(p.id);
+    const axis = Y.clone().applyQuaternion(Q(p.quat)).normalize();
+    const rotor = dtrain.addVirtualRotor({ housing: g.body, axisLocal: axis, inertia: 0.02 });
+    const c = { part: p, rotor, rotorObj: partObjects.get(p.id)?.getObjectByName('rotor'), gearObjs: [] };
+    carriers.set(p.id, c);
+    const side = (id, label) => {
+      const sg = id != null && byId.has(id) ? groups.get(uf.find(id)) : null;
+      if (!sg) { warnings.push(`Дифференциал #${p.id}: не выбрана ${label} полуось`); return null; }
+      if (sg === g) { warnings.push(`Дифференциал #${p.id}: ${label} полуось жёстко соединена с рамой — нужна на подшипнике`); return null; }
+      const rs = rotatingSide.get(sg.key);
+      if (!rs) warnings.push(`Дифференциал #${p.id}: ${label} полуось не стоит на подшипнике`);
+      return dtrain.physicalRotor(sg.body, rs ? rs.base.body : null, axis);
+    };
+    const L = side(p.left, 'левая'), Rr = side(p.right, 'правая');
+    if (L && Rr) {
+      if (L.entry === Rr.entry) warnings.push(`Дифференциал #${p.id}: обе полуоси — одно тело (они соединены между собой)`);
+      else dtrain.addDiff(rotor, L, Rr);
+    }
+  }
+
   // ---- gears ----
   const gears = [];
   for (const p of parts) {
@@ -225,6 +249,11 @@ export function assemble(bp, world, R, root, { selfCollision = false } = {}) {
       unit.gears.push(gear);
       const obj = partObjects.get(p.id);
       if (obj) unit.gearObjs = [...(unit.gearObjs || []), { obj, baseQuat: obj.quaternion.clone() }];
+    } else if (mountPart && carriers.has(mountPart.id)) {
+      const c = carriers.get(mountPart.id);
+      gear = { part: p, rotor: c.rotor, radius, center, axis };
+      const obj = partObjects.get(p.id);
+      if (obj) c.gearObjs.push({ obj, baseQuat: obj.quaternion.clone() });
     } else {
       const g = groupOf(p.id);
       const rs = rotatingSide.get(g.key);
@@ -272,7 +301,7 @@ export function assemble(bp, world, R, root, { selfCollision = false } = {}) {
   if (!main) main = [...groups.values()].sort((a, b) => b.mass - a.mass)[0] || null;
 
   const totalMass = [...groups.values()].reduce((s, g) => s + g.mass, 0);
-  return { groups, visuals, joints, dtrain, powerUnits, gears, meshes, bindings, seats, main, warnings, totalMass, partObjects };
+  return { groups, visuals, joints, dtrain, powerUnits, carriers, gears, meshes, bindings, seats, main, warnings, totalMass, partObjects };
 }
 
 /** Geometric meshing test shared by the assembler and the editor overlay. */

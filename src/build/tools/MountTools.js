@@ -16,7 +16,7 @@ export class GearTool extends Tool {
   reset() { super.reset(); this.candidate = null; this.fit = null; }
   hint() {
     const s = this.settings;
-    let h = `Наведи на вал, ось колеса или вал мотора и кликни · зубьев: <b>${s.gearTeeth}</b> (<b>[ ]</b>), Ø ${(gearRadius(s.gearTeeth, s.gearModule) * 2).toFixed(3)} м`;
+    let h = `Наведи на вал, ось колеса, вал мотора или дифференциал и кликни · зубьев: <b>${s.gearTeeth}</b> (<b>[ ]</b>), Ø ${(gearRadius(s.gearTeeth, s.gearModule) * 2).toFixed(3)} м`;
     if (this.fit) h += ` · <b>F</b> — подогнать до ${this.fit} зуб. для зацепления`;
     return h;
   }
@@ -24,7 +24,8 @@ export class GearTool extends Tool {
     const line = worldAxisLine(part);
     if (!line) return null;
     let center;
-    if (part.type === 'motor' || part.type === 'engine') center = line.origin;
+    const onRotor = ['motor', 'engine', 'diff'].includes(part.type);
+    if (onRotor) center = line.origin;
     else {
       center = closestOnLine(line.origin, line.dir, hitPoint);
       // snap along the axis
@@ -32,7 +33,7 @@ export class GearTool extends Tool {
       center = line.origin.clone().addScaledVector(line.dir, t);
     }
     const s = this.settings;
-    return Gear.create({ pos: A(center), quat: QA(part.type === 'motor' || part.type === 'engine' ? Q(part.quat) : quatYTo(line.dir)), teeth: s.gearTeeth, module: s.gearModule, mount: part.id, material: s.material === 'rubber' ? 'steel' : s.material });
+    return Gear.create({ pos: A(center), quat: QA(onRotor ? Q(part.quat) : quatYTo(line.dir)), teeth: s.gearTeeth, module: s.gearModule, mount: part.id, material: s.material === 'rubber' ? 'steel' : s.material });
   }
   computeFit(g) {
     const center = V(g.pos), axis = new THREE.Vector3(0, 1, 0).applyQuaternion(Q(g.quat));
@@ -53,7 +54,7 @@ export class GearTool extends Tool {
   }
   onMove(snap, e, ndc) {
     this.clearPreview();
-    const hit = this.build.snapper.pickPart(ndc, (p) => ['beam', 'shape', 'motor', 'engine'].includes(p.type));
+    const hit = this.build.snapper.pickPart(ndc, (p) => ['beam', 'shape', 'motor', 'engine', 'diff'].includes(p.type));
     this.build.setHover(hit ? hit.partId : null);
     this.candidate = null; this.fit = null;
     if (!hit) { this.build.updateHint(); return; }
